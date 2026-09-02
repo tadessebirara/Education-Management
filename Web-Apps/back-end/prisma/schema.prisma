@@ -1,0 +1,448 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  username          String    @unique @db.VarChar(50)
+  email             String    @unique @db.VarChar(100)
+  passwordHash      String    @map("password_hash") @db.VarChar(255)
+  firstName         String?   @map("first_name") @db.VarChar(50)
+  lastName          String?   @map("last_name") @db.VarChar(50)
+  phone             String?   @db.VarChar(20)
+  roleId            Int       @map("role_id")
+  isActive          Boolean   @default(true) @map("is_active")
+  lastLogin         DateTime? @map("last_login")
+  passwordChangedAt DateTime? @map("password_changed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  role       Role        @relation(fields: [roleId], references: [id])
+  sessions   Session[]
+  auditLogs  AuditLog[]
+  student    Student?
+  instructor Instructor?
+
+  // ✅ Added missing opposite relations
+  sections          Section[] // For instructor relation in Section
+  attendanceRecords Attendance[] // For instructor relation in Attendance
+  payments          Payment[] // For receiver relation in Payment
+  announcements     Announcement[] // For author relation in Announcement
+  notifications     Notification[] // For user relation in Notification
+
+  @@map("users")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  resource    String   @db.VarChar(50)
+  action      String   @db.VarChar(20)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int @map("role_id")
+  permissionId Int @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @db.VarChar(500)
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model Student {
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @unique @map("user_id")
+  studentId           String    @unique @map("student_id") @db.VarChar(20)
+  dateOfBirth         DateTime? @map("date_of_birth")
+  gender              String?   @db.VarChar(10)
+  guardianName        String?   @map("guardian_name") @db.VarChar(100)
+  guardianPhone       String?   @map("guardian_phone") @db.VarChar(20)
+  address             String?   @db.Text
+  programId           Int?      @map("program_id")
+  currentAcademicYear String?   @map("current_academic_year") @db.VarChar(20)
+  enrollmentStatus    String    @default("active") @map("enrollment_status") @db.VarChar(20)
+  registrationDate    DateTime  @default(now()) @map("registration_date")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user              User         @relation(fields: [userId], references: [id])
+  program           Program?     @relation(fields: [programId], references: [id])
+  enrollments       Enrollment[]
+  attendanceRecords Attendance[]
+  grades            Grade[]
+  feeRecords        FeeRecord[]
+  payments          Payment[]
+
+  @@map("students")
+}
+
+model Instructor {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  employeeId     String   @unique @map("employee_id") @db.VarChar(20)
+  departmentId   Int?     @map("department_id")
+  specialization String?  @db.VarChar(100)
+  hireDate       DateTime @map("hire_date")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user              User               @relation(fields: [userId], references: [id])
+  department        Department?        @relation(fields: [departmentId], references: [id])
+  courseAssignments CourseAssignment[]
+
+  @@map("instructors")
+}
+
+model CourseAssignment {
+  id           Int      @id @default(autoincrement())
+  instructorId Int      @map("instructor_id")
+  courseId     Int      @map("course_id")
+  sectionId    Int      @map("section_id")
+  semesterId   Int      @map("semester_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  instructor Instructor @relation(fields: [instructorId], references: [id])
+  course     Course     @relation(fields: [courseId], references: [id])
+  section    Section    @relation(fields: [sectionId], references: [id])
+  semester   Semester   @relation(fields: [semesterId], references: [id])
+
+  @@map("course_assignments")
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  code        String   @unique @db.VarChar(20)
+  description String?  @db.Text
+  headId      Int?     @map("head_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  programs    Program[]
+  courses     Course[]
+  instructors Instructor[]
+  sections    Section[]
+
+  @@map("departments")
+}
+
+model Program {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  code          String   @unique @db.VarChar(20)
+  departmentId  Int      @map("department_id")
+  durationYears Int      @map("duration_years")
+  description   String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id])
+  students   Student[]
+  courses    Course[]
+
+  @@map("programs")
+}
+
+model Course {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  code         String   @unique @db.VarChar(20)
+  creditHours  Int      @map("credit_hours")
+  departmentId Int      @map("department_id")
+  programId    Int?     @map("program_id")
+  description  String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department        Department         @relation(fields: [departmentId], references: [id])
+  program           Program?           @relation(fields: [programId], references: [id])
+  sections          Section[]
+  courseAssignments CourseAssignment[]
+
+  @@map("courses")
+}
+
+model Section {
+  id                Int      @id @default(autoincrement())
+  name              String   @db.VarChar(50)
+  courseId          Int      @map("course_id")
+  semesterId        Int      @map("semester_id")
+  instructorId      Int?     @map("instructor_id")
+  departmentId      Int?     @map("department_id")
+  room              String?  @db.VarChar(50)
+  maxCapacity       Int?     @map("max_capacity")
+  currentEnrollment Int      @default(0) @map("current_enrollment")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  course            Course             @relation(fields: [courseId], references: [id])
+  semester          Semester           @relation(fields: [semesterId], references: [id])
+  instructor        User?              @relation(fields: [instructorId], references: [id])
+  department        Department?        @relation(fields: [departmentId], references: [id])
+  enrollments       Enrollment[]
+  attendanceRecords Attendance[]
+  assessments       Assessment[]
+  timetables        Timetable[]
+  courseAssignments CourseAssignment[]
+
+  @@map("sections")
+}
+
+model Semester {
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(50)
+  academicYearId Int      @map("academic_year_id")
+  startDate      DateTime @map("start_date")
+  endDate        DateTime @map("end_date")
+  isActive       Boolean  @default(false) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  academicYear      AcademicYear       @relation(fields: [academicYearId], references: [id])
+  sections          Section[]
+  enrollments       Enrollment[]
+  feeRecords        FeeRecord[]
+  courseAssignments CourseAssignment[]
+
+  @@map("semesters")
+}
+
+model AcademicYear {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  isCurrent Boolean  @default(false) @map("is_current")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  semesters Semester[]
+
+  @@map("academic_years")
+}
+
+model Enrollment {
+  id             Int      @id @default(autoincrement())
+  studentId      Int      @map("student_id")
+  sectionId      Int      @map("section_id")
+  semesterId     Int      @map("semester_id")
+  enrollmentDate DateTime @default(now()) @map("enrollment_date")
+  status         String   @default("active") @db.VarChar(20)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  student  Student  @relation(fields: [studentId], references: [id])
+  section  Section  @relation(fields: [sectionId], references: [id])
+  semester Semester @relation(fields: [semesterId], references: [id])
+  grades   Grade[]
+
+  @@map("enrollments")
+}
+
+model Attendance {
+  id           Int      @id @default(autoincrement())
+  studentId    Int      @map("student_id")
+  sectionId    Int      @map("section_id")
+  date         DateTime
+  status       String   @db.VarChar(20)
+  instructorId Int      @map("instructor_id")
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  student    Student @relation(fields: [studentId], references: [id])
+  section    Section @relation(fields: [sectionId], references: [id])
+  instructor User    @relation(fields: [instructorId], references: [id])
+
+  @@unique([studentId, sectionId, date])
+  @@map("attendance")
+}
+
+model Assessment {
+  id          Int       @id @default(autoincrement())
+  sectionId   Int       @map("section_id")
+  name        String    @db.VarChar(100)
+  type        String    @db.VarChar(50)
+  weight      Float     @default(0)
+  maxMarks    Float     @map("max_marks")
+  dueDate     DateTime? @map("due_date")
+  isPublished Boolean   @default(false) @map("is_published")
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  section Section @relation(fields: [sectionId], references: [id])
+  grades  Grade[]
+
+  @@map("assessments")
+}
+
+model Grade {
+  id            Int       @id @default(autoincrement())
+  enrollmentId  Int       @map("enrollment_id")
+  assessmentId  Int       @map("assessment_id")
+  marksObtained Float     @map("marks_obtained")
+  totalMarks    Float     @map("total_marks")
+  gradePoint    Float?    @map("grade_point")
+  letterGrade   String?   @map("letter_grade") @db.VarChar(2)
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+
+  // ✅ Added missing opposite relation for Student
+  student   Student? @relation(fields: [studentId], references: [id])
+  studentId Int?
+
+  @@map("grades")
+}
+
+model FeeRecord {
+  id               Int       @id @default(autoincrement())
+  studentId        Int       @map("student_id")
+  semesterId       Int       @map("semester_id")
+  totalFees        Float     @map("total_fees")
+  paidAmount       Float     @default(0) @map("paid_amount")
+  remainingBalance Float     @map("remaining_balance")
+  dueDate          DateTime? @map("due_date")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  student  Student   @relation(fields: [studentId], references: [id])
+  semester Semester  @relation(fields: [semesterId], references: [id])
+  payments Payment[]
+
+  @@map("fee_records")
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  feeRecordId     Int      @map("fee_record_id")
+  amount          Float
+  paymentDate     DateTime @default(now()) @map("payment_date")
+  referenceNumber String?  @map("reference_number") @db.VarChar(50)
+  paymentMethod   String   @map("payment_method") @db.VarChar(50)
+  receivedBy      Int      @map("received_by")
+  receiptNumber   String?  @map("receipt_number") @db.VarChar(50)
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  feeRecord FeeRecord @relation(fields: [feeRecordId], references: [id])
+  receiver  User      @relation(fields: [receivedBy], references: [id])
+
+  // ✅ Added missing opposite relation for Student
+  student   Student? @relation(fields: [studentId], references: [id])
+  studentId Int?
+
+  @@map("payments")
+}
+
+model Timetable {
+  id        Int      @id @default(autoincrement())
+  sectionId Int      @map("section_id")
+  dayOfWeek Int      @map("day_of_week")
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+  room      String?  @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  section Section @relation(fields: [sectionId], references: [id])
+
+  @@map("timetables")
+}
+
+model Announcement {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(200)
+  content     String    @db.Text
+  authorId    Int       @map("author_id")
+  targetRoles String[]  @map("target_roles")
+  status      String    @default("draft") @db.VarChar(20)
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@map("announcements")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  title     String    @db.VarChar(200)
+  message   String    @db.Text
+  type      String    @db.VarChar(50)
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  link      String?   @db.VarChar(500)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  action       String   @db.VarChar(50)
+  resourceType String   @map("resource_type") @db.VarChar(50)
+  resourceId   Int?     @map("resource_id")
+  changes      Json?    @db.JsonB
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  status       String   @default("success") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
