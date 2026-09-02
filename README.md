@@ -257,4 +257,4 @@ cd front-end && npm run build
 - **Repository:**  https://github.com/tadessebirara/Education-Management.git
   
 
-**Built with ❤️ for Ethiopian Education curriculum **
+**Built with ❤️ for   Educational institutions specially for private educational institutions with user friendly way  **
