@@ -1,5 +1,12 @@
 # 🎓 Education Management System (EMS)
 
+
+## screenshot
+
+
+<img width="1355" height="636" alt="image" src="https://github.com/user-attachments/assets/c85dab00-b815-42dd-ba60-fdf1c2c048be" />
+
+
 ### A Production-Ready Education Management System for Ethiopian Private Colleges
 
 ---
