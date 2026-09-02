@@ -247,7 +247,7 @@ cd front-end && npm run build
 
 ## 📄 License
 
-Apache © 2024 Tadesse Birara
+© 2026 Tadesse Birara. All rights reserved.
 
 ---
 
